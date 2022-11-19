@@ -1,0 +1,6 @@
+json
+requests
+flask
+tensorflow_hub
+sklearn
+transformers
