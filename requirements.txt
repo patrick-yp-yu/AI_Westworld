@@ -1,4 +1,4 @@
-json
+tensorflow
 requests
 flask
 tensorflow_hub
