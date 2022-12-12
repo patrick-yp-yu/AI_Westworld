@@ -9,6 +9,8 @@ public class ObjectGeneration
 {
     public Dictionary <string,GameObject> objectsDict;
     GameObject player;
+
+    // Dictionaries to translate string into appropriate type or color object
     private static readonly Dictionary<string, PrimitiveType> TypeDict = new Dictionary<string, PrimitiveType> {
         {"sphere", PrimitiveType.Sphere},
         {"cube", PrimitiveType.Cube},
@@ -26,6 +28,8 @@ public class ObjectGeneration
         {"white", Color.white},
         {"yellow", Color.yellow},
     };
+
+    // Deprecated dictionary for size, now handled on server side
     /*
     private static readonly Dictionary<string, Vector3> SizeDict = new Dictionary<string, Vector3> {
         {"small", new Vector3 (0.5f, 0.5f, 0.5f)},
@@ -33,11 +37,14 @@ public class ObjectGeneration
         {"large", new Vector3 (3.0f, 3.0f, 3.0f)}
     };
     */
+
+    // Instatiating object dictionary and finding player object
     public ObjectGeneration() {
         objectsDict = new Dictionary<string,GameObject>();
         player = GameObject.Find("Player");
     }
 
+    // Loading prefab via filename from "Resources" folder in Assets to instantiate as new GameObject
     private UnityEngine.Object LoadPrefabFromFile(string filename)
     {
         Debug.Log("Trying to load LevelPrefab from file ("+filename+ ")...");
@@ -49,49 +56,9 @@ public class ObjectGeneration
         return loadedObject;
     }
 
-    public void PickObject(Response.ObjectManager objectManager) {
-        foreach (string objName in objectManager.Delete) {
-            objectsDict.Remove(objName);
-        }
-
-        foreach (Response.ObjectManager.NewObj obj in objectManager.Create) {
-            
-            GameObject newObj = null;
-
-            // Creating New Object 
-            newObj = GameObject.CreatePrimitive(TypeDict[obj.Type]); 
-
-            Rigidbody newRigidbody = newObj.AddComponent<Rigidbody>();
-            newRigidbody.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
-
-            MeshCollider newMeshCollider = newObj.AddComponent<MeshCollider>();
-            newMeshCollider.convex = true;
-
-            if (obj.Color != "default") { // format later
-                newObj.GetComponent<Renderer>().material.SetColor("_Color", ColorDict[obj.Color]);
-            }
-            
-            //newObj.transform.localScale = SizeDict[obj.Size];
-            newObj.transform.localScale = new Vector3 (obj.Size, obj.Size, obj.Size);
-
-            var newDirectionRad = ((player.transform.eulerAngles.y + obj.Location[2])*Math.PI) / 180;
-            var newX = obj.Location[1]*Math.Sin(newDirectionRad);
-            var newY = obj.Location[0];
-            var newZ = obj.Location[1]*Math.Cos(newDirectionRad);
-            
-            newObj.transform.position = player.transform.position + new Vector3((float)newX, (float)newY, (float)newZ);
-            //newObj.transform.position = new Vector3(UnityEngine.Random.Range(-20.0f, 20.0f), 1.5f, UnityEngine.Random.Range(-20.0f, 20.0f));
-            newObj.name = obj.Name;
-
-            try {
-                objectsDict.Add(obj.Name, newObj);
-            } catch (ArgumentException) {
-                Console.WriteLine("Key already exists!");
-            }
-        }
-    }
-
-    public void PickAnimal(Response.ObjectManager objectManager) {
+    // Parsing object manager response to create and delete objects
+    public void PickPrefab(Response.ObjectManager objectManager) {
+        // Delete designated objects from unity scene and object dictionary 
         foreach (string objName in objectManager.Delete) {
             GameObject objToRemove;
             if (objectsDict.TryGetValue(objName, out objToRemove))
@@ -101,25 +68,33 @@ public class ObjectGeneration
             }
         }
 
+        // Create designated objects with type, color, size, and location attributes
         foreach (Response.ObjectManager.NewObj obj in objectManager.Create) {
-            var newDirectionRad = ((player.transform.eulerAngles.y + obj.Location[2])*Math.PI) / 180;
+            // Calculating radian direction relative to current player perspective
+            var newDirectionRad = ((player.transform.eulerAngles.y + obj.Location[2])*Math.PI) / 180; 
+            // Calculating XYZ coordinates of new object's location
             var newX = obj.Location[1]*Math.Sin(newDirectionRad);
             var newY = obj.Location[0];
             var newZ = obj.Location[1]*Math.Cos(newDirectionRad);
             var newVector3Pos = player.transform.position + new Vector3((float)newX, (float)newY/4.0f, (float)newZ);
-            
+
+            // Loading prefab of designated type from "Resources" folder in Assets to instantiate as new GameObject
             var loadedPrefabResource = LoadPrefabFromFile(obj.Type);
             GameObject instancedObj = GameObject.Instantiate(loadedPrefabResource, newVector3Pos, Quaternion.identity) as GameObject;
 
+            // Add rigidbody and mesh collider components to new GameObject to apply gravity
             Rigidbody newRigidbody = instancedObj.AddComponent<Rigidbody>();
             newRigidbody.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
-
             MeshCollider newMeshCollider = instancedObj.AddComponent<MeshCollider>();
             newMeshCollider.convex = true;
 
+            // Resize object with designated size
             instancedObj.transform.localScale = new Vector3 (obj.Size, obj.Size, obj.Size);
+
+            // Rename object with designated name
             instancedObj.name = obj.Name;
 
+            // Apply tint with designated color through application of new generated material with standard shader
             if (obj.Color != "default") { // format later
                 Material[] mats = new Material[2];
                 mats[0] = instancedObj.GetComponent<Renderer>().material;
@@ -141,6 +116,7 @@ public class ObjectGeneration
                 instancedObj.GetComponent<Renderer>().materials = mats;
             }
 
+            // Add created object to object dictionary
             try {
                 objectsDict.Add(obj.Name, instancedObj);
             } catch (ArgumentException) {
@@ -149,94 +125,41 @@ public class ObjectGeneration
         }
     }
 
-}
-    /*
-            // Type
-            if (obj.Type == "sphere") {
-                newObj = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            } else if (obj.Type == "cube") {
-                newObj = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            }
+    // Deprecated function originally used for generating primative objects within Unity (like spheres and cubes) instead of prefabs
+    public void PickObject(Response.ObjectManager objectManager) {
+        foreach (string objName in objectManager.Delete) {
+            objectsDict.Remove(objName);
+        }
+        foreach (Response.ObjectManager.NewObj obj in objectManager.Create) {
+            GameObject newObj = null;
+            // Creating New Object 
+            newObj = GameObject.CreatePrimitive(TypeDict[obj.Type]); 
 
-            // Color
-            if (obj.Color == "red") {
-                newObj.GetComponent<Renderer>().material.SetColor("_Color", Color.red);
-            } else if (obj.Color == "blue") {
-                newObj.GetComponent<Renderer>().material.SetColor("_Color", Color.blue);
-            } else if (obj.Color == "green") {
-                newObj.GetComponent<Renderer>().material.SetColor("_Color", Color.green);
-            } else if (obj.Color == "white") {
-                newObj.GetComponent<Renderer>().material.SetColor("_Color", Color.white);
-            }
+            Rigidbody newRigidbody = newObj.AddComponent<Rigidbody>();
+            newRigidbody.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
 
-            // Size
-            if (obj.Size == "small") {
-                newObj.transform.localScale = new Vector3 (0.5f, 0.5f, 0.5f);
-            } else if (obj.Size == "medium") {
-                newObj.transform.localScale = new Vector3 (1.5f, 1.5f, 1.5f);
-            } else if (obj.Size == "large") {
-                newObj.transform.localScale = new Vector3 (3.0f, 3.0f, 3.0f);
-            } 
+            MeshCollider newMeshCollider = newObj.AddComponent<MeshCollider>();
+            newMeshCollider.convex = true;
+
+            if (obj.Color != "default") {
+                newObj.GetComponent<Renderer>().material.SetColor("_Color", ColorDict[obj.Color]);
+            }
             
-            // Location
-            newObj.transform.position = new Vector3(1.5f, 1.5f, 1.5f); // to remove later
-            if (obj.Location == "default") {
-                newObj.transform.position = new Vector3(UnityEngine.Random.Range(-20.0f, 20.0f), 1.5f, UnityEngine.Random.Range(-20.0f, 20.0f));
-            }
+            newObj.transform.localScale = new Vector3 (obj.Size, obj.Size, obj.Size);
 
-            // Name
+            var newDirectionRad = ((player.transform.eulerAngles.y + obj.Location[2])*Math.PI) / 180;
+            var newX = obj.Location[1]*Math.Sin(newDirectionRad);
+            var newY = obj.Location[0];
+            var newZ = obj.Location[1]*Math.Cos(newDirectionRad);
+            
+            newObj.transform.position = player.transform.position + new Vector3((float)newX, (float)newY, (float)newZ);
             newObj.name = obj.Name;
-            Debug.Log("NAME: "+obj.Name);
-    */
 
-        /*
-        Regex rgx = new Regex("[^a-zA-Z0-9 ]");
-        string processedMessage = rgx.Replace(messageText.Substring(5), "");
-        HashSet<string> words = new HashSet<string>();
-        foreach (string w in processedMessage.Split()) {
-            words.Add(w.ToLower());
-        }
-        Debug.Log(processedMessage);
-        GameObject newObj = null;
-        if (words.Contains("sphere") || words.Contains("ball")) {
-            Debug.Log("ball detected");
-            newObj = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            objects.Add(newObj);
-        } else if (words.Contains("cube") || words.Contains("box")) {
-            newObj = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            objects.Add(newObj);
-        } else if (words.Contains("delete") || words.Contains("remove")){            
-            newObj = null;
-            for (int i = 0; i < objects.Count; i++) {
-                Destroy(objects[i].gameObject);
+            try {
+                objectsDict.Add(obj.Name, newObj);
+            } catch (ArgumentException) {
+                Console.WriteLine("Key already exists!");
             }
-            objects.Clear();
-        }  
-        
-        if (newObj != null) {
-            float x = 1.5f;
-            float z = 0.0f;
-            if (messageText.Length > 14) {
-                if (messageText[14] >= 65) {
-                    x = (float)Char.ToLower(messageText[14])-110.0f;
-                }
-                if (messageText[14] >= 65) {
-                    z = (float)Char.ToLower(messageText[9])-110.0f;
-                }
-            }
-            newObj.GetComponent<Renderer>().material.SetColor("_Color", Color.red);
-            newObj.transform.position = new Vector3(x, 1.5f, z);
         }
-        */
-
-    /*
-    private GameObject CreateSphere() 
-    {
-        return GameObject.CreatePrimitive(PrimitiveType.Sphere);
     }
-
-    private GameObject CreateCube() 
-    {
-        return GameObject.CreatePrimitive(PrimitiveType.Cube);
-    }
-    */
+}

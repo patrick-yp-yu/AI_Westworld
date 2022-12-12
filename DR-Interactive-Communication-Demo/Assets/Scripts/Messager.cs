@@ -37,7 +37,7 @@ public class Messager : MonoBehaviour
     {
         objectGeneration = new ObjectGeneration();
 
-        // Initializing list of object names for server
+        // Initializing list of prefab object names to send to server
         string[] files = Directory.GetFiles(@"Assets/Resources", "*.prefab");
         string allPrefabNames = "/prefab?list=";
         foreach(string file in files)
@@ -51,10 +51,10 @@ public class Messager : MonoBehaviour
         StartCoroutine(GetRequest(allPrefabNames));
     }
 
+    // Handling requests to server
     IEnumerator GetRequest(string uri)
     {
         uri = prefix+uri;
-        //Debug.Log(" TEST: " + uri);
         using (UnityWebRequest webRequest = UnityWebRequest.Get(uri))
         {
             // Request and wait for the desired page.
@@ -83,16 +83,18 @@ public class Messager : MonoBehaviour
         }
     }
 
+    // Parsing JSON response from server into text message and the response data structure
     public void ParseResponse(string messageText, MessageType messageType) 
     {
-        if (messageText[0] != '0') { // '0' response means request was for initializing object list and does not have a message
+        if (messageText[0] != '0') { // '0' response means request was for initializing object list and should not be parsed
             Response response = JsonUtility.FromJson<Response>(messageText);
             // objectGeneration.PickObject(response.Object);
-            objectGeneration.PickAnimal(response.Object);
+            objectGeneration.PickPrefab(response.Object);
             AddMessage($"Bot: {response.Text.Trim()}", messageType);
         }
     }
 
+    // Print a text message to the chat window (with MessageTypes of User or Bot)
     public void AddMessage (string messageText, MessageType messageType) 
     {
         if (Messages.Count >= 25)
@@ -111,6 +113,7 @@ public class Messager : MonoBehaviour
         Messages.Add(newMessage);
     }
 
+    // Send the contents of the chat box to be processed by the server
     public void SendMessageToBot()
     {
         var userMessage = chatBox.text.Trim();
@@ -122,12 +125,12 @@ public class Messager : MonoBehaviour
 
             var serverMessage = mode+userMessage;
             StartCoroutine(GetRequest(serverMessage));
-            //GetRequest(userMessage);
             chatBox.Select();
             chatBox.text = "";
         }
     }
 
+    // Toggle the mode of response, which can be modified to include modes as needed
     public void ToggleMode() {
         if (toggle.text == "Mode 0") {
             toggle.text = "Mode 1";
@@ -144,19 +147,19 @@ public class Messager : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if (Input.GetKeyDown(KeyCode.T)) 
+        if (Input.GetKeyDown(KeyCode.T)) // The "T" key is used to activate the chat window
         {
             chatBox.ActivateInputField();
         }
-        if (Input.GetKeyDown(KeyCode.Return))
+        if (Input.GetKeyDown(KeyCode.Return)) // The "return" key is used to send a user's message
         {
            SendMessageToBot();
         }
-        if (Input.GetKeyDown(KeyCode.Tab))
+        if (Input.GetKeyDown(KeyCode.Tab)) // The "tab" key is used to toggle the response mode
         {
             ToggleMode();
         }
-        if (Input.GetKeyDown(KeyCode.Escape))
+        if (Input.GetKeyDown(KeyCode.Escape)) // The "escape" key is used to terminate the program
         {
             Application.Quit();
         }

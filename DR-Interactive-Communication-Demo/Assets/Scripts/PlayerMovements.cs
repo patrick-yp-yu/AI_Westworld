@@ -15,6 +15,7 @@ public class PlayerMovements : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        // Simple movement script when not typing in chat box
         if (!chatBox.isFocused) {
             Vector3 vel = transform.forward * Input.GetAxis("Vertical") + transform.right * Input.GetAxis("Horizontal");
             controller.SimpleMove(vel * speed);

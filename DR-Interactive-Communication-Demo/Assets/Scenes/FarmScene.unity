@@ -2811,8 +2811,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 87bc598270de94d1db5f1402e46b3513, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  mouseSensitivity: 400
   playerBody: {fileID: 1704712901}
+  mouseSensitivity: 400
 --- !u!1 &963208707
 GameObject:
   m_ObjectHideFlags: 0
@@ -3291,7 +3291,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0.00002477563, y: 282.99997}
+  m_AnchoredPosition: {x: 0.00002477563, y: 282.99908}
   m_SizeDelta: {x: 483, y: 0}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &1334810694
