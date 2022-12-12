@@ -56,6 +56,7 @@ def delete_obj(obj, adj):
 
 
 def find_adj_numeric(part):
+    # defining possible adjective by numerical similarity
     global TYPE
     colors = ["black", "blue", "cyan", "gray", "green", "magenta", "red", "white", "yellow"]
     sizes = ["small tiny mini", "medium standard normal", "large huge big"]
@@ -119,6 +120,7 @@ def find_adj_numeric(part):
 
 
 def find_adj(part):
+    # defining adjectives by picking the most similar category
     global TYPE
     colors = ["black", "blue", "cyan", "gray", "green", "magenta", "red", "white", "yellow"]
     sizes = ["small tiny mini", "medium standard normal", "large huge big"]
@@ -178,7 +180,7 @@ def process(text):
     delete_list = []
     tags = query({"inputs": text})
     conj = []
-    # divide text
+    # divide text by conjuction and punctuations
     for i in range(len(tags)):
         if tags[i]['entity_group'] == "CCONJ" or tags[i]["word"] in ".?!:;":
             conj.append(i)
@@ -187,21 +189,25 @@ def process(text):
         tags, pt = tags[:i], tags[i:]
         parts.insert(0, pt)
     parts.insert(0, tags)
-    pre = None
+    
+    pre = None # pre-recorded operation
     for p in parts:
+        # for each part, find verb, noun and adjectives
         op = None
         ob = None
-        thres = 0.1
+        thres = 0.1 # accuracy threshold
         adj = []
         for word in p:
+            # check operation
             if word["entity_group"] == "VERB":
                 l = [word["word"], "create", "delete"]
                 embeddings = sim_model(l)
                 similarity = cosine_similarity(embeddings, embeddings)[0][1:]
                 mv = max(similarity)
-                if mv > 0.1:
+                if mv > thres:
                     mi = list(similarity).index(mv)
                     op = OP[mi]
+            # check whether object matches the list elements
             if word["entity_group"] == "NOUN":
                 l = [" ".join([i["word"] for i in p])] + TYPE
                 embeddings = sim_model(l)
@@ -242,6 +248,7 @@ app = Flask(__name__)
 def idx(name):
     global MODE
     MODE = name[0]
+    # mode 0: process raw input; mode 1: process sbot response
     if MODE == "0":
         return process(name[1:])
     else:
@@ -260,6 +267,7 @@ def idx(name):
 
 
 @app.route('/prefab')
+# set TYPE list
 def index():
     global TYPE
     p = request.args.get('list')
